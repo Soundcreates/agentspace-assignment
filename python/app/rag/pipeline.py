@@ -1,5 +1,3 @@
-"""RAG orchestration: load → index → LangGraph ask workflow."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -11,7 +9,8 @@ from app.rag.llm.judge import RAG_SCORE_THRESHOLD, judge_rag_need
 from app.rag.loaders.local import SUPPORTED_EXTENSIONS, load_file, load_sources
 from app.rag.models import Index, SourceChunk
 from app.rag.query.enhance import enhance_queries, rewrite_query, split_query
-from app.rag.chunkers.text import chunk_text, deduplicate
+from app.rag.chunkers.text import chunk_text
+from app.rag.deduplicators import deduplicate
 from app.rag.vectorstores.chroma import build_index, retrieve, retrieve_multi
 
 
@@ -23,7 +22,6 @@ def ask(
     on_token=None,
     judge_llm=None,
 ) -> dict[str, object]:
-    """Run the LangGraph ask workflow (judge → optional RAG → answer)."""
     return run_ask(
         index,
         question,

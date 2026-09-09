@@ -1,8 +1,4 @@
-"""Text chunking and content deduplication."""
-
 from __future__ import annotations
-
-import hashlib
 
 from app.rag.models import SourceChunk
 from app.rag.util import env_int
@@ -27,15 +23,3 @@ def chunk_text(text: str, metadata: dict[str, object]) -> list[SourceChunk]:
             break
         start = max(end - overlap, start + 1)
     return chunks
-
-
-def deduplicate(chunks: list[SourceChunk]) -> list[SourceChunk]:
-    seen: set[str] = set()
-    unique: list[SourceChunk] = []
-    for chunk in chunks:
-        digest = hashlib.sha256(chunk.text.encode("utf-8")).hexdigest()
-        if digest in seen:
-            continue
-        seen.add(digest)
-        unique.append(chunk)
-    return unique

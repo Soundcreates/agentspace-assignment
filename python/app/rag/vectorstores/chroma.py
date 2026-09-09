@@ -1,5 +1,3 @@
-"""Local Chroma vector store."""
-
 from __future__ import annotations
 
 import hashlib
@@ -7,7 +5,7 @@ import os
 import uuid
 from pathlib import Path
 
-from app.rag.chunkers.text import deduplicate
+from app.rag.deduplicators import deduplicate
 from app.rag.models import Index, SourceChunk
 from app.rag.util import env_int
 
@@ -25,7 +23,6 @@ def _chroma_metadata(metadata: dict[str, object]) -> dict[str, str | int | float
 
 
 def _chroma_client():
-    """Local persistent Chroma client (path from CHROMA_PATH)."""
     import chromadb
 
     path = os.getenv("CHROMA_PATH", str(Path(__file__).resolve().parents[3] / ".chroma"))
@@ -105,7 +102,6 @@ def retrieve(index: Index, query: str, k: int = 6) -> list[SourceChunk]:
 
 
 def retrieve_multi(index: Index, queries: list[str], k: int = 6) -> list[SourceChunk]:
-    """Retrieve for each query and merge unique chunks (best distance first)."""
     if not queries:
         return []
     per_query = max(1, (k + len(queries) - 1) // len(queries))

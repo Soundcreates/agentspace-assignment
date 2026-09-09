@@ -1,5 +1,3 @@
-"""Query rewriting and multi-part query splitting for better retrieval."""
-
 from __future__ import annotations
 
 import os
@@ -7,7 +5,6 @@ import re
 
 
 def split_query(question: str) -> list[str]:
-    """Split a question into retrieval-friendly sub-queries / sentences."""
     cleaned = " ".join(question.strip().split())
     if not cleaned:
         return []
@@ -44,7 +41,6 @@ def split_query(question: str) -> list[str]:
 
 
 def rewrite_query(question: str, llm=None) -> str:
-    """Rewrite the user question into a clearer retrieval query."""
     cleaned = " ".join(question.strip().split())
     if not cleaned:
         return ""
@@ -102,7 +98,6 @@ def _default_llm():
 
 
 def enhance_queries(question: str, llm=None) -> list[str]:
-    """Build a set of retrieval queries: original, rewrite, and split parts."""
     cleaned = " ".join(question.strip().split())
     if not cleaned:
         return []

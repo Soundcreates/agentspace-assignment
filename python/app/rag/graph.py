@@ -1,5 +1,3 @@
-"""LangGraph workflow for ask: judge → (retrieve | skip) → answer."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -90,7 +88,6 @@ def _answer_node(state: AskState) -> dict[str, Any]:
 
 
 def build_ask_graph():
-    """Compile the ask StateGraph (judge → conditional retrieve → answer)."""
     graph = StateGraph(AskState)
     graph.add_node("judge", _judge_node)
     graph.add_node("retrieve", _retrieve_node)
@@ -130,7 +127,6 @@ def run_ask(
     on_token=None,
     judge_llm=None,
 ) -> dict[str, object]:
-    """Invoke the LangGraph ask workflow and return the API-shaped result dict."""
     final = get_ask_graph().invoke(
         {
             "question": question,

@@ -1,5 +1,3 @@
-"""Ask questions about local text, Markdown, or PDF files."""
-
 from __future__ import annotations
 
 import argparse
@@ -21,7 +19,6 @@ from app.rag.pipeline import SUPPORTED_EXTENSIONS, build_from_paths, ask
 
 
 def parse_source_paths(raw: str) -> list[Path]:
-    """Parse shell-escaped paths (including terminal drag-and-drop paste)."""
     try:
         tokens = shlex.split(raw.strip())
     except ValueError as exc:
@@ -62,7 +59,6 @@ def print_chunks(result: dict[str, object]) -> None:
 
 
 def _stream_chars(text: str, delay_s: float) -> None:
-    """Print text one character at a time for a natural typing feel."""
     for char in text:
         print(char, end="", flush=True)
         if delay_s > 0:

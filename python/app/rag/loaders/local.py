@@ -1,5 +1,3 @@
-"""Local file loaders for text, markdown, and PDF."""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -14,7 +12,6 @@ SUPPORTED_EXTENSIONS = {".txt", ".md", ".pdf"}
 
 
 def load_file(path: Path, max_chars: int) -> tuple[str, dict[str, object]]:
-    """Load a local .txt/.md/.pdf file up to max_chars. Returns (text, coverage meta)."""
     path = path.expanduser().resolve()
     if not path.is_file():
         raise FileNotFoundError(f"file not found: {path}")
@@ -72,7 +69,6 @@ def load_file(path: Path, max_chars: int) -> tuple[str, dict[str, object]]:
 
 
 def load_sources(paths: list[Path], max_source_chars: int | None = None) -> tuple[list[SourceChunk], bool]:
-    """Load and chunk multiple local files under a shared character budget."""
     budget = max_source_chars if max_source_chars is not None else env_int("RAG_MAX_SOURCE_CHARS", 150_000)
     chunks: list[SourceChunk] = []
     partial = False

@@ -1,5 +1,3 @@
-"""Shared RAG data models."""
-
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -13,8 +11,6 @@ class SourceChunk:
 
 @dataclass
 class Index:
-    """Local Chroma-backed index that can be reused across questions."""
-
     chunks: list[SourceChunk]
     collection: object
     chunk_by_id: dict[str, SourceChunk]

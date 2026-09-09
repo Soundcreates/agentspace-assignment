@@ -1,5 +1,3 @@
-"""Context assembly for the LLM prompt."""
-
 from __future__ import annotations
 
 from app.rag.models import SourceChunk
@@ -7,7 +5,6 @@ from app.rag.util import env_int
 
 
 def build_context(documents: list[SourceChunk]) -> tuple[str, set[str]]:
-    """Build labeled source context for the LLM prompt."""
     max_doc_chars = env_int("RAG_CONTEXT_DOC_CHARS", 1400)
     max_total_chars = env_int("RAG_CONTEXT_TOTAL_CHARS", 9000)
     current_total = 0

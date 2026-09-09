@@ -1,5 +1,3 @@
-"""LangChain / OpenRouter answer generation."""
-
 from __future__ import annotations
 
 import os
@@ -45,7 +43,6 @@ def generate_answer(
     llm=None,
     on_token=None,
 ) -> str:
-    """Stream/generate an answer via LangChain ChatOpenAI over OpenRouter."""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if llm is None and not api_key:
         raise RuntimeError(

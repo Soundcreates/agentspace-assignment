@@ -1,5 +1,3 @@
-"""RAG package public surface."""
-
 from app.rag.pipeline import (
     SUPPORTED_EXTENSIONS,
     ask,

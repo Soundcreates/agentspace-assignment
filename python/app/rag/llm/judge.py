@@ -1,5 +1,3 @@
-"""Judge LLM: score whether the question needs help from the RAG service."""
-
 from __future__ import annotations
 
 import json
@@ -94,7 +92,6 @@ def _parse_score(raw: str) -> tuple[float, str] | None:
 
 
 def _heuristic_judgment(question: str, source_names: list[str] | None) -> dict[str, Any]:
-    """Offline / fallback: lean toward RAG when sources exist and the question looks document-bound."""
     cleaned = " ".join(question.strip().split())
     lower = cleaned.lower()
     general = (
@@ -143,7 +140,6 @@ def judge_rag_need(
     source_names: list[str] | None = None,
     llm=None,
 ) -> dict[str, Any]:
-    """Return ``{score, use_rag, reason}``. ``use_rag`` is True only when score > 60."""
     cleaned = " ".join(question.strip().split())
     if not cleaned:
         return {"score": 0.0, "use_rag": False, "reason": "empty question"}

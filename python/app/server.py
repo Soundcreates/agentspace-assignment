@@ -1,5 +1,3 @@
-"""HTTP API for the local RAG pipeline."""
-
 from __future__ import annotations
 
 import json
@@ -35,7 +33,6 @@ def _split_origins(raw: str) -> list[str]:
 
 
 def _cors_origins() -> list[str]:
-    """Allow the Vite app that talks to this API through VITE_API_BASE_URL."""
     origins: list[str] = []
     seen: set[str] = set()
     chunks = [
@@ -78,7 +75,6 @@ class AskBody(BaseModel):
 @app.get("/health")
 @app.get("/api/health")
 def health() -> dict[str, Any]:
-    """Liveness/readiness probe for local runs and Docker healthchecks."""
     openrouter = bool(os.getenv("OPENROUTER_API_KEY", "").strip())
     chroma_path = os.getenv("CHROMA_PATH", ".chroma")
     ready = openrouter

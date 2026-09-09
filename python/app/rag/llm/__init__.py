@@ -1,5 +1,3 @@
-"""LLM generation package."""
-
 from app.rag.llm.generate import ABSTAIN, SYSTEM_PROMPT, generate_answer
 from app.rag.llm.judge import RAG_SCORE_THRESHOLD, judge_rag_need
 
