@@ -55,9 +55,20 @@ class AskBody(BaseModel):
     top_k: int = Field(default=6, ge=1, le=24)
 
 
+@app.get("/health")
 @app.get("/api/health")
-def health() -> dict[str, str]:
-    return {"status": "ok"}
+def health() -> dict[str, Any]:
+    """Liveness/readiness probe for local runs and Docker healthchecks."""
+    openrouter = bool(os.getenv("OPENROUTER_API_KEY", "").strip())
+    chroma = bool(os.getenv("CHROMA_API_KEY", "").strip())
+    ready = openrouter and chroma
+    return {
+        "status": "ok" if ready else "degraded",
+        "ready": ready,
+        "openrouter_configured": openrouter,
+        "chroma_configured": chroma,
+        "sessions": len(_sessions),
+    }
 
 
 @app.post("/api/session")
