@@ -1,0 +1,11 @@
+services:
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # Bind is handled by Dockerfile CMD; ensure Cloud + OpenRouter keys come from .env
+      OPENROUTER_TITLE: agentspace-rag
+    restart: unless-stopped

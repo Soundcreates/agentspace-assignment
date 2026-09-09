@@ -1,11 +1,10 @@
-"""Local Chroma vector store."""
+"""Chroma Cloud vector store."""
 
 from __future__ import annotations
 
 import hashlib
 import os
 import uuid
-from pathlib import Path
 
 from app.rag.chunkers.text import deduplicate
 from app.rag.models import Index, SourceChunk
@@ -25,11 +24,31 @@ def _chroma_metadata(metadata: dict[str, object]) -> dict[str, str | int | float
 
 
 def _chroma_client():
+    """Connect to Chroma Cloud using CHROMA_API_KEY (+ optional tenant/database/host)."""
     import chromadb
 
-    path = os.getenv("CHROMA_PATH", str(Path(__file__).resolve().parents[3] / ".chroma"))
-    Path(path).mkdir(parents=True, exist_ok=True)
-    return chromadb.PersistentClient(path=path)
+    api_key = os.getenv("CHROMA_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError(
+            "CHROMA_API_KEY is not set. Create a database at https://www.trychroma.com/ "
+            "and set CHROMA_API_KEY (plus CHROMA_TENANT / CHROMA_DATABASE if required)."
+        )
+
+    kwargs: dict[str, object] = {"api_key": api_key}
+    tenant = os.getenv("CHROMA_TENANT", "").strip()
+    database = os.getenv("CHROMA_DATABASE", "").strip()
+    if tenant:
+        kwargs["tenant"] = tenant
+    if database:
+        kwargs["database"] = database
+
+    # Region host from the Chroma dashboard Connect panel (optional).
+    cloud_host = (os.getenv("CHROMA_HOST") or os.getenv("CHROMA_CLOUD_HOST") or "").strip()
+    if cloud_host:
+        kwargs["cloud_host"] = cloud_host
+        kwargs["cloud_port"] = env_int("CHROMA_PORT", 443)
+
+    return chromadb.CloudClient(**kwargs)
 
 
 def build_index(chunks: list[SourceChunk], partial: bool = False, source_paths: list[str] | None = None) -> Index:

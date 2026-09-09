@@ -1,7 +1,7 @@
 # Tiny Local RAG Q&A
 
 Ask questions about **your** local `.txt`, `.md`, or `.pdf` files.
-Files are chunked locally, stored in a **local Chroma** persistent database, then answered by an **OpenRouter** model through a **LangGraph** ask workflow (LangChain) with **token streaming**.
+Files are chunked locally, indexed in **Chroma Cloud**, then answered by an **OpenRouter** model through a **LangGraph** ask workflow (LangChain) with **token streaming**.
 
 ## Layout
 
@@ -15,11 +15,12 @@ python/
     models.py / context.py / util.py
     loaders/local.py
     chunkers/text.py
-    vectorstores/chroma.py
-    query/enhance.py         # rewrite + split + multi-query retrieve helpers
+    vectorstores/chroma.py   # Chroma CloudClient
+    query/enhance.py
     llm/generate.py
-    llm/judge.py             # RAG-need score judge
-  .chroma/
+    llm/judge.py
+  Dockerfile
+  docker-compose.yml
   .env.example
   tests/test_rag_pipeline.py
   requirements.txt
@@ -32,12 +33,34 @@ frontend/                    # React + Tailwind + GSAP prompt page
 cd python
 python3 -m pip install -r requirements.txt
 cp .env.example .env
-# edit .env and set OPENROUTER_API_KEY=sk-or-...
+# edit .env and set:
+#   OPENROUTER_API_KEY=sk-or-...
+#   CHROMA_API_KEY=...
+#   CHROMA_TENANT=...
+#   CHROMA_DATABASE=...
 ```
 
-Requires Python 3.10+. OpenRouter key: https://openrouter.ai/keys
+Requires Python 3.10+.  
+OpenRouter: https://openrouter.ai/keys  
+Chroma Cloud: https://www.trychroma.com/ (use the dashboard **Connect** panel for tenant/database/API key).
 
-Optional: `CHROMA_PATH` to choose where Chroma persists (default `python/.chroma`).
+## Docker
+
+From `python/`:
+
+```bash
+# ensure .env has OPENROUTER_API_KEY + CHROMA_* credentials
+docker compose up --build
+```
+
+API listens on http://localhost:8000 (`GET /api/health`).
+
+Or without Compose:
+
+```bash
+docker build -t agentspace-api .
+docker run --rm -p 8000:8000 --env-file .env agentspace-api
+```
 
 ## Usage
 
@@ -55,7 +78,7 @@ When prompted, drag one or more files into the terminal, then ask questions. Ans
 Two terminals:
 
 ```bash
-# 1. API (use the venv interpreter — a bare `uvicorn` may hit a broken system install)
+# 1. API (local) — or use Docker Compose above
 cd python
 python -m app.server
 ```
@@ -86,7 +109,7 @@ python3 -m app.main notes.txt --question "What is this project about?" --json
 ## How it works
 
 1. Load local files under a character budget.
-2. Chunk text and upsert embeddings into a **local Chroma** collection (`chromadb.PersistentClient`).
+2. Chunk text and upsert embeddings into a **Chroma Cloud** collection (`chromadb.CloudClient`).
 3. Run the **LangGraph** ask graph:
    - `judge` — score whether RAG help is needed (0–100); continue to retrieve only when score **> 60**
    - `retrieve` or `skip_retrieve` — enhance queries + multi-query Chroma retrieval, or empty context

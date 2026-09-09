@@ -130,7 +130,7 @@ def main() -> None:
 
     print(
         f"Indexed {len(index.chunks)} chunk(s) from {len(index.source_paths)} file(s) "
-        f"into local Chroma ({index.collection_name}).",
+        f"into Chroma Cloud ({index.collection_name}).",
         flush=True,
     )
     if index.partial:

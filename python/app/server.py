@@ -23,13 +23,23 @@ from app.rag.models import Index
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
+_DEFAULT_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+]
+
+
+def _cors_origins() -> list[str]:
+    raw = os.getenv("CORS_ORIGINS", "").strip()
+    if not raw:
+        return list(_DEFAULT_ORIGINS)
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
 app = FastAPI(title="AgentSpace RAG")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=_cors_origins(),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -56,6 +66,8 @@ async def create_session(files: list[UploadFile] = File(...)) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="at least one file is required")
     if not os.getenv("OPENROUTER_API_KEY"):
         raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY is not set")
+    if not os.getenv("CHROMA_API_KEY"):
+        raise HTTPException(status_code=500, detail="CHROMA_API_KEY is not set")
 
     dest_dir = Path(mkdtemp(prefix="agentspace-"))
     saved: list[Path] = []
