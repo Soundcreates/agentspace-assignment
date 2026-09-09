@@ -1,0 +1,33 @@
+# Bytecode / caches
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+
+# Local artifacts
+*.log
+.coverage
+htmlcov/
+
+# Secrets
+.env
+.env.local
+**/.env
+!**/.env.example
+
+# Local Chroma data
+**/.chroma/
+

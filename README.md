@@ -1,32 +1,67 @@
-# Tiny RAG Q&A
+# Tiny Local RAG Q&A
 
-This is a small retrieval-augmented Q&A demo over [RFC 9110 — HTTP Semantics](https://www.rfc-editor.org/rfc/rfc9110.html).
+Ask questions about **your** local `.txt`, `.md`, or `.pdf` files.
+Files are chunked locally, stored in a **local Chroma** persistent database, then answered by an **OpenRouter** model through **LangChain** with **token streaming**.
 
-It uses only Python's standard library:
+## Layout
 
-1. Downloads and caches the public RFC text.
-2. Removes RFC page noise, groups text by section, and chunks it with overlap.
-3. Builds sparse TF–IDF vectors as local embeddings and retrieves the top six chunks with cosine similarity.
-4. Extracts an answer from the retrieved evidence, or abstains when the question is not sufficiently supported.
-
-Run it with Python 3.10+:
-
-```bash
-python3 rag_qa.py
+```text
+python/
+  app/main.py              # CLI entry point (streams answer tokens)
+  app/rag/pipeline.py      # load → chunk → local Chroma retrieve → LangChain stream
+  .chroma/                 # local Chroma data (created at runtime)
+  .env.example
+  tests/test_rag_pipeline.py
+  requirements.txt
 ```
 
-For machine-readable answers and the exact evidence returned by retrieval:
+## Install
 
 ```bash
-python3 rag_qa.py --json > answers.json
+cd python
+python3 -m pip install -r requirements.txt
+cp .env.example .env
+# edit .env and set OPENROUTER_API_KEY=sk-or-...
 ```
 
-The built-in questions are deliberately shaped as requested:
+Requires Python 3.10+. OpenRouter key: https://openrouter.ai/keys
 
-- Q1: HTTPS's default port (factual).
-- Q2: safe methods plus idempotency/retry behavior (combines two sections).
-- Q3: a summary of Section 9.2.2.
-- Q4: HTTP/2 vs HTTP/3 performance over 5G, which RFC 9110 does not answer and should trigger abstention.
+Optional: `CHROMA_PATH` to choose where Chroma persists (default `python/.chroma`).
 
-No API/UI wrapper is included; the JSON CLI already exposes the core result cleanly.
-# agentspace-assignment
+## Usage
+
+### Interactive (drag-and-drop)
+
+```bash
+cd python
+python3 -m app.main
+```
+
+When prompted, drag one or more files into the terminal, then ask questions. Answers stream **character by character** (paced from LangChain token chunks; tune with `STREAM_CHAR_DELAY_MS`, default `12`).
+
+### One-shot
+
+```bash
+python3 -m app.main notes.txt --question "What is this project about?"
+```
+
+### JSON (non-streaming, full payload)
+
+```bash
+python3 -m app.main notes.txt --question "What is this project about?" --json
+```
+
+## How it works
+
+1. Load local files under a character budget.
+2. Chunk text and upsert embeddings into a **local Chroma** collection (`chromadb.PersistentClient`).
+3. Query Chroma for top-k passages.
+4. Stream an answer with LangChain `ChatOpenAI` pointed at OpenRouter (`llm.stream(...)`).
+5. The model answers mainly from its own knowledge and uses retrieved passages as optional helper context.
+
+## Tests
+
+```bash
+cd python
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
