@@ -151,25 +151,60 @@ export default function App() {
     }
   }
 
+  function handleLeaveSession() {
+    setMessages([])
+    setQuestion('')
+    setFiles([])
+    clearSession()
+    setSessionError(null)
+    setAskError(null)
+  }
+
   const notice = sessionError || askError
 
   return (
-    <div ref={pageRef} className="relative min-h-svh">
+    <div
+      ref={pageRef}
+      className={`relative ${chatStarted ? 'h-svh overflow-hidden' : 'min-h-svh'}`}
+    >
       <Background />
+      {chatStarted && (
+        <button
+          type="button"
+          onClick={handleLeaveSession}
+          className="fixed left-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-white/20 bg-ink/45 text-cream shadow-[0_12px_40px_rgba(10,16,22,0.35)] backdrop-blur-xl transition hover:border-gold/50 hover:bg-ink/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold"
+          aria-label="Leave session and return home"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <path
+              d="M6 6l12 12M18 6L6 18"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      )}
       <main
-        className={`relative z-10 mx-auto flex min-h-svh w-full max-w-3xl flex-col px-5 ${
-          chatStarted ? 'justify-between py-6' : 'items-center justify-center py-16'
+        className={`relative z-10 mx-auto flex w-full max-w-3xl flex-col px-5 ${
+          chatStarted
+            ? 'h-full justify-between pb-[max(1rem,env(safe-area-inset-bottom))] pt-6'
+            : 'min-h-svh items-center justify-center py-16'
         }`}
       >
         {!chatStarted && <Greeting className="mb-10" />}
 
         {chatStarted && (
-          <div className="min-h-0 flex-1 overflow-y-auto pb-4 pt-2">
+          <div className="chat-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain pb-4 pt-2">
             <ChatThread messages={messages} streaming={asking} />
           </div>
         )}
 
-        <div className={`w-full ${chatStarted ? 'shrink-0' : ''} flex flex-col items-center`}>
+        <div
+          className={`flex w-full flex-col items-center ${
+            chatStarted ? 'shrink-0 pt-3' : ''
+          }`}
+        >
           <PromptBar
             value={question}
             onChange={setQuestion}
