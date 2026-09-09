@@ -93,6 +93,8 @@ def main() -> None:
 
     # Load python/.env when present (same directory as requirements.txt).
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
+    if not os.getenv("OPENROUTER_API_KEY"):
+        raise SystemExit("error: OPENROUTER_API_KEY is not set")
 
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s - %(message)s")
     parser = argparse.ArgumentParser(
@@ -119,9 +121,6 @@ def main() -> None:
         parser.error("--json requires --question")
 
     paths = resolve_sources(args.sources) if args.sources else prompt_sources()
-
-    if not os.getenv("OPENROUTER_API_KEY"):
-        raise SystemExit("error: OPENROUTER_API_KEY is not set (required for LLM answers)")
 
     print(f"Loading {len(paths)} source(s)...", flush=True)
     try:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import tempfile
 import unittest
 from pathlib import Path
@@ -161,13 +162,37 @@ class PipelineTests(unittest.TestCase):
             {"source": "protocol.txt", "filename": "protocol.txt", "path": "protocol.txt"},
         )
         index = _fake_index(chunks)
+        judge = Mock()
+        judge.invoke.return_value = Mock(content='{"score": 82, "reason": "doc-specific"}')
         llm = Mock()
         llm.invoke.return_value = Mock(content="GET and PUT can be repeated after failure.")
-        result = ask(index, "Which methods can be repeated?", llm=llm)
+        result = ask(index, "Which methods can be repeated?", llm=llm, judge_llm=judge)
         self.assertIn("GET", result["answer"])
+        self.assertTrue(result["use_rag"])
+        self.assertGreater(result["rag_score"], 60)
         self.assertTrue(result["source_ids"])
         self.assertEqual(result["retrieved_chunks"][0]["filename"], "protocol.txt")
         self.assertEqual(result["documents_count"], len(index.chunks))
+        judge.invoke.assert_called_once()
+
+    def test_ask_skips_retrieval_when_judge_score_low(self):
+        chunks = chunk_text(
+            "GET and PUT can be repeated after a communication failure.",
+            {"source": "protocol.txt", "filename": "protocol.txt", "path": "protocol.txt"},
+        )
+        index = _fake_index(chunks)
+        judge = Mock()
+        judge.invoke.return_value = Mock(content='{"score": 25, "reason": "general knowledge"}')
+        llm = Mock()
+        llm.invoke.return_value = Mock(content="Paris is the capital of France.")
+        result = ask(index, "What is the capital of France?", llm=llm, judge_llm=judge)
+        self.assertFalse(result["use_rag"])
+        self.assertEqual(result["rag_score"], 25)
+        self.assertEqual(result["queries"], [])
+        self.assertEqual(result["retrieved_chunks"], [])
+        self.assertEqual(result["source_ids"], [])
+        index.collection.query.assert_not_called()
+        self.assertIn("Paris", result["answer"])
 
     def test_index_reuse_across_questions(self):
         chunks = [
@@ -178,18 +203,52 @@ class PipelineTests(unittest.TestCase):
         ]
         index = _fake_index(chunks)
         collection_id = id(index.collection)
+        judge = Mock()
+        judge.invoke.return_value = Mock(content='{"score": 75, "reason": "project fact"}')
         llm = Mock()
         llm.invoke.return_value = Mock(content="Alpha service uses port 8080.")
-        first = ask(index, "What port does Alpha service use?", llm=llm)
-        second = ask(index, "What is Alpha service default port?", llm=llm)
+        first = ask(index, "What port does Alpha service use?", llm=llm, judge_llm=judge)
+        second = ask(index, "What is Alpha service default port?", llm=llm, judge_llm=judge)
         self.assertIn("8080", first["answer"])
         self.assertIn("8080", second["answer"])
         self.assertEqual(first["documents_count"], second["documents_count"])
         self.assertEqual(id(index.collection), collection_id)
         self.assertEqual(llm.invoke.call_count, 2)
+        self.assertEqual(judge.invoke.call_count, 2)
         self.assertGreaterEqual(index.collection.query.call_count, 2)
         self.assertTrue(first["queries"])
         self.assertTrue(second["queries"])
+
+
+class JudgeTests(unittest.TestCase):
+    def test_parse_score_and_threshold(self):
+        from app.rag.llm.judge import judge_rag_need
+
+        llm = Mock()
+        llm.invoke.return_value = Mock(content='{"score": 61, "reason": "borderline high"}')
+        high = judge_rag_need("What does section 3 say?", source_names=["notes.txt"], llm=llm)
+        self.assertEqual(high["score"], 61)
+        self.assertTrue(high["use_rag"])
+
+        llm.invoke.return_value = Mock(content='{"score": 60, "reason": "at threshold"}')
+        edge = judge_rag_need("Hello there", source_names=["notes.txt"], llm=llm)
+        self.assertEqual(edge["score"], 60)
+        self.assertFalse(edge["use_rag"])
+
+    def test_heuristic_without_api(self):
+        from app.rag.llm.judge import judge_rag_need
+
+        with patch.dict("os.environ", {"OPENROUTER_API_KEY": ""}, clear=False):
+            # Ensure key absence path: pass llm=None and empty key
+            env = {k: v for k, v in os.environ.items() if k != "OPENROUTER_API_KEY"}
+            with patch.dict("os.environ", env, clear=True):
+                result = judge_rag_need(
+                    "According to this document, what is the timeout?",
+                    source_names=["guide.md"],
+                    llm=None,
+                )
+        self.assertTrue(result["use_rag"])
+        self.assertGreater(result["score"], 60)
 
 
 class QueryEnhanceTests(unittest.TestCase):

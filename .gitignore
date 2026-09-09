@@ -31,3 +31,7 @@ htmlcov/
 # Local Chroma data
 **/.chroma/
 
+# Frontend
+frontend/node_modules/
+frontend/dist/
+
