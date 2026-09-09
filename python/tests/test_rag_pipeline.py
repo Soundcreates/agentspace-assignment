@@ -14,10 +14,14 @@ from app.rag.pipeline import (
     ask,
     build_context,
     chunk_text,
+    enhance_queries,
     generate_answer,
     load_file,
     load_sources,
     retrieve,
+    retrieve_multi,
+    rewrite_query,
+    split_query,
 )
 
 
@@ -83,7 +87,7 @@ class LoaderTests(unittest.TestCase):
             with pdf_path.open("wb") as handle:
                 writer.write(handle)
 
-            with patch("app.rag.pipeline.PdfReader") as reader_cls:
+            with patch("app.rag.loaders.local.PdfReader") as reader_cls:
                 page = Mock()
                 page.extract_text.return_value = "Idempotent methods may be retried after failure."
                 reader_cls.return_value.pages = [page]
@@ -183,7 +187,57 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(first["documents_count"], second["documents_count"])
         self.assertEqual(id(index.collection), collection_id)
         self.assertEqual(llm.invoke.call_count, 2)
-        self.assertEqual(index.collection.query.call_count, 2)
+        self.assertGreaterEqual(index.collection.query.call_count, 2)
+        self.assertTrue(first["queries"])
+        self.assertTrue(second["queries"])
+
+
+class QueryEnhanceTests(unittest.TestCase):
+    def test_split_and_rewrite_multipart_question(self):
+        question = "What is custody-role disambiguation and how does fail-closed policy validation work?"
+        parts = split_query(question)
+        self.assertGreaterEqual(len(parts), 2)
+        self.assertTrue(any("custody" in p.lower() for p in parts))
+        self.assertTrue(any("fail-closed" in p.lower() or "policy" in p.lower() for p in parts))
+
+        rewritten = rewrite_query(question, llm=None)
+        self.assertTrue(rewritten)
+        self.assertNotIn("?", rewritten)
+
+        enhanced = enhance_queries(question, llm=None)
+        self.assertGreaterEqual(len(enhanced), 2)
+        self.assertEqual(enhanced[0], " ".join(question.split()))
+
+    def test_retrieve_multi_merges_unique_chunks(self):
+        chunks = [
+            SourceChunk("Section A about custody roles.", {"chunk_id": "a", "filename": "a.txt"}),
+            SourceChunk("Section B about fail-closed policy.", {"chunk_id": "b", "filename": "b.txt"}),
+        ]
+        index = _fake_index(chunks)
+
+        def _query_side_effect(query_texts, n_results):
+            q = query_texts[0].lower()
+            if "custody" in q:
+                chosen = [chunks[0]]
+            elif "fail" in q or "policy" in q:
+                chosen = [chunks[1]]
+            else:
+                chosen = chunks
+            return {
+                "ids": [[c.metadata["chunk_id"] for c in chosen]],
+                "distances": [[0.1] * len(chosen)],
+                "documents": [[c.text for c in chosen]],
+                "metadatas": [[dict(c.metadata) for c in chosen]],
+            }
+
+        index.collection.query.side_effect = _query_side_effect
+        merged = retrieve_multi(
+            index,
+            ["custody roles", "fail-closed policy validation"],
+            k=6,
+        )
+        ids = {c.metadata["chunk_id"] for c in merged}
+        self.assertEqual(ids, {"a", "b"})
 
 
 if __name__ == "__main__":

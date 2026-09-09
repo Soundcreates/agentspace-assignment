@@ -15,25 +15,9 @@ from pathlib import Path
 if __package__ in {None, ""}:
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-# #region agent log
-import json as _json, time as _time
-_DEBUG_LOG = Path(__file__).resolve().parents[2] / ".cursor" / "debug-c95187.log"
-def _dbg(hypothesis_id: str, location: str, message: str, data: dict | None = None, run_id: str = "pre-fix") -> None:
-    try:
-        _DEBUG_LOG.parent.mkdir(parents=True, exist_ok=True)
-        with _DEBUG_LOG.open("a", encoding="utf-8") as _fh:
-            _fh.write(_json.dumps({"sessionId": "c95187", "runId": run_id, "hypothesisId": hypothesis_id, "location": location, "message": message, "data": data or {}, "timestamp": int(_time.time() * 1000)}) + "\n")
-    except Exception:
-        pass
-_t0 = _time.perf_counter()
-_dbg("A", "main.py:before_pipeline_import", "about to import app.rag.pipeline", {"elapsed_ms": 0})
-# #endregion
 
 from app.rag.pipeline import SUPPORTED_EXTENSIONS, build_from_paths, ask
 
-# #region agent log
-_dbg("A", "main.py:after_pipeline_import", "pipeline import finished", {"elapsed_ms": round((_time.perf_counter() - _t0) * 1000, 1)})
-# #endregion
 
 
 def parse_source_paths(raw: str) -> list[Path]:
@@ -110,7 +94,7 @@ def main() -> None:
     # Load python/.env when present (same directory as requirements.txt).
     load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s - %(message)s")
+    logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s - %(message)s")
     parser = argparse.ArgumentParser(
         description="Ask questions about local .txt, .md, or .pdf files (drag files into the terminal to paste paths).",
     )
