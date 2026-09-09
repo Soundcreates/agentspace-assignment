@@ -23,17 +23,37 @@ from app.rag.models import Index
 
 load_dotenv(Path(__file__).resolve().parents[1] / ".env")
 
-_DEFAULT_ORIGINS = [
+# Vite frontend origins (browser Origin). The UI calls this API via VITE_API_BASE_URL.
+_DEFAULT_VITE_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
 
 
+def _split_origins(raw: str) -> list[str]:
+    return [origin.strip().rstrip("/") for origin in raw.split(",") if origin.strip()]
+
+
 def _cors_origins() -> list[str]:
-    raw = os.getenv("CORS_ORIGINS", "").strip()
-    if not raw:
-        return list(_DEFAULT_ORIGINS)
-    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+    """Allow the Vite app that talks to this API through VITE_API_BASE_URL."""
+    origins: list[str] = []
+    seen: set[str] = set()
+    chunks = [
+        ",".join(_DEFAULT_VITE_ORIGINS),
+        os.getenv("CORS_ORIGINS", ""),
+        os.getenv("VITE_FRONTEND_ORIGIN", ""),
+        # Optional alias: some setups put the Vite UI origin here.
+        os.getenv("VITE_API_BASE_URL", ""),
+    ]
+    for raw in chunks:
+        for origin in _split_origins(raw):
+            # Skip the API's own URL if someone copied VITE_API_BASE_URL from the frontend .env
+            if origin.endswith(":8000") and "5173" not in origin:
+                continue
+            if origin not in seen:
+                seen.add(origin)
+                origins.append(origin)
+    return origins or list(_DEFAULT_VITE_ORIGINS)
 
 
 app = FastAPI(title="AgentSpace RAG")

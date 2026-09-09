@@ -24,7 +24,16 @@ export type AskTokenEvent = { type: 'token'; text: string }
 export type AskErrorEvent = { type: 'error'; message: string }
 export type AskEvent = AskTokenEvent | AskDoneEvent | AskErrorEvent
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
+function apiBaseUrl(): string {
+  const raw = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? ''
+  return raw.trim().replace(/\/$/, '')
+}
+
+function apiUrl(path: string): string {
+  const base = apiBaseUrl()
+  const normalized = path.startsWith('/') ? path : `/${path}`
+  return `${base}${normalized}`
+}
 
 async function readError(response: Response): Promise<string> {
   try {
@@ -40,7 +49,7 @@ async function readError(response: Response): Promise<string> {
 export async function createSession(files: File[]): Promise<SessionResponse> {
   const form = new FormData()
   for (const file of files) form.append('files', file)
-  const response = await fetch(`${API_BASE}/api/session`, {
+  const response = await fetch(apiUrl('/api/session'), {
     method: 'POST',
     body: form,
   })
@@ -54,7 +63,7 @@ export async function askQuestion(
   onEvent: (event: AskEvent) => void,
   topK = 6,
 ): Promise<void> {
-  const response = await fetch(`${API_BASE}/api/ask`, {
+  const response = await fetch(apiUrl('/api/ask'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'text/event-stream' },
     body: JSON.stringify({ session_id: sessionId, question, top_k: topK }),
