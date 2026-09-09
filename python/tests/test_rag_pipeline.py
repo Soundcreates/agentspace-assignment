@@ -300,36 +300,15 @@ class QueryEnhanceTests(unittest.TestCase):
         self.assertEqual(ids, {"a", "b"})
 
 
-class ChromaCloudTests(unittest.TestCase):
-    def test_client_requires_api_key(self):
-        env = {k: v for k, v in os.environ.items() if k != "CHROMA_API_KEY"}
-        with patch.dict(os.environ, env, clear=True):
-            with self.assertRaises(RuntimeError) as ctx:
-                chroma_mod._chroma_client()
-        self.assertIn("CHROMA_API_KEY", str(ctx.exception))
-
-    def test_client_passes_cloud_credentials(self):
+class ChromaLocalTests(unittest.TestCase):
+    def test_client_uses_persistent_path(self):
         import chromadb
 
-        with patch.dict(
-            os.environ,
-            {
-                "CHROMA_API_KEY": "ck-test",
-                "CHROMA_TENANT": "tenant-1",
-                "CHROMA_DATABASE": "db-1",
-                "CHROMA_HOST": "europe-west1.gcp.trychroma.com",
-            },
-            clear=False,
-        ):
-            with patch.object(chromadb, "CloudClient") as fake:
-                chroma_mod._chroma_client()
-        fake.assert_called_once()
-        kwargs = fake.call_args.kwargs
-        self.assertEqual(kwargs["api_key"], "ck-test")
-        self.assertEqual(kwargs["tenant"], "tenant-1")
-        self.assertEqual(kwargs["database"], "db-1")
-        self.assertEqual(kwargs["cloud_host"], "europe-west1.gcp.trychroma.com")
-        self.assertEqual(kwargs["cloud_port"], 443)
+        with tempfile.TemporaryDirectory() as tmp:
+            with patch.dict(os.environ, {"CHROMA_PATH": tmp}, clear=False):
+                with patch.object(chromadb, "PersistentClient") as fake:
+                    chroma_mod._chroma_client()
+            fake.assert_called_once_with(path=tmp)
 
 
 if __name__ == "__main__":

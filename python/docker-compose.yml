@@ -6,6 +6,11 @@ services:
     env_file:
       - .env
     environment:
-      # Bind is handled by Dockerfile CMD; ensure Cloud + OpenRouter keys come from .env
       OPENROUTER_TITLE: agentspace-rag
+      CHROMA_PATH: /app/.chroma
+    volumes:
+      - chroma_data:/app/.chroma
     restart: unless-stopped
+
+volumes:
+  chroma_data:

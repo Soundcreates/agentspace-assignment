@@ -80,13 +80,14 @@ class AskBody(BaseModel):
 def health() -> dict[str, Any]:
     """Liveness/readiness probe for local runs and Docker healthchecks."""
     openrouter = bool(os.getenv("OPENROUTER_API_KEY", "").strip())
-    chroma = bool(os.getenv("CHROMA_API_KEY", "").strip())
-    ready = openrouter and chroma
+    chroma_path = os.getenv("CHROMA_PATH", ".chroma")
+    ready = openrouter
     return {
         "status": "ok" if ready else "degraded",
         "ready": ready,
         "openrouter_configured": openrouter,
-        "chroma_configured": chroma,
+        "chroma": "local",
+        "chroma_path": chroma_path,
         "sessions": len(_sessions),
     }
 
@@ -97,8 +98,6 @@ async def create_session(files: list[UploadFile] = File(...)) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail="at least one file is required")
     if not os.getenv("OPENROUTER_API_KEY"):
         raise HTTPException(status_code=500, detail="OPENROUTER_API_KEY is not set")
-    if not os.getenv("CHROMA_API_KEY"):
-        raise HTTPException(status_code=500, detail="CHROMA_API_KEY is not set")
 
     dest_dir = Path(mkdtemp(prefix="agentspace-"))
     saved: list[Path] = []

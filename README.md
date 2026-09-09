@@ -1,21 +1,21 @@
 # Tiny Local RAG Q&A
 
 Ask questions about **your** local `.txt`, `.md`, or `.pdf` files.
-Files are chunked locally, indexed in **Chroma Cloud**, then answered by an **OpenRouter** model through a **LangGraph** ask workflow (LangChain) with **token streaming**.
+Files are chunked locally, stored in a **local Chroma** persistent database, then answered by an **OpenRouter** model through a **LangGraph** ask workflow (LangChain) with **token streaming**.
 
 ## Layout
 
 ```text
 python/
   app/main.py                # CLI
-  app/server.py              # FastAPI: /api/session, /api/ask (SSE), /api/health
+  app/server.py              # FastAPI: /api/session, /api/ask (SSE), /health
   app/rag/
     pipeline.py              # build_from_paths + ask() wrapper
     graph.py                 # LangGraph ask workflow (judge → retrieve|skip → answer)
     models.py / context.py / util.py
     loaders/local.py
     chunkers/text.py
-    vectorstores/chroma.py   # Chroma CloudClient
+    vectorstores/chroma.py   # local Chroma PersistentClient
     query/enhance.py
     llm/generate.py
     llm/judge.py
@@ -25,6 +25,7 @@ python/
   tests/test_rag_pipeline.py
   requirements.txt
 frontend/                    # React + Tailwind + GSAP prompt page
+  .env.example               # VITE_API_BASE_URL
 ```
 
 ## Install
@@ -33,33 +34,33 @@ frontend/                    # React + Tailwind + GSAP prompt page
 cd python
 python3 -m pip install -r requirements.txt
 cp .env.example .env
-# edit .env and set:
-#   OPENROUTER_API_KEY=sk-or-...
-#   CHROMA_API_KEY=...
-#   CHROMA_TENANT=...
-#   CHROMA_DATABASE=...
+# edit .env and set OPENROUTER_API_KEY=sk-or-...
+
+cd ../frontend
+cp .env.example .env
+# VITE_API_BASE_URL=http://localhost:8000
 ```
 
-Requires Python 3.10+.  
-OpenRouter: https://openrouter.ai/keys  
-Chroma Cloud: https://www.trychroma.com/ (use the dashboard **Connect** panel for tenant/database/API key).
+Requires Python 3.10+. OpenRouter key: https://openrouter.ai/keys
+
+Local Chroma path: `CHROMA_PATH` (default `.chroma`).
 
 ## Docker
 
 From `python/`:
 
 ```bash
-# ensure .env has OPENROUTER_API_KEY + CHROMA_* credentials
+# ensure .env has OPENROUTER_API_KEY
 docker compose up --build
 ```
 
-API listens on http://localhost:8000 (`GET /api/health`).
+API listens on http://localhost:8000 (`GET /health`). Chroma data persists in the `chroma_data` volume.
 
 Or without Compose:
 
 ```bash
 docker build -t agentspace-api .
-docker run --rm -p 8000:8000 --env-file .env agentspace-api
+docker run --rm -p 8000:8000 --env-file .env -v agentspace-chroma:/app/.chroma agentspace-api
 ```
 
 ## Usage
@@ -90,9 +91,9 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:5173. Attach `.txt` / `.md` / `.pdf` files, then ask from the prompt bar. The Vite dev server proxies `/api` to port 8000.
+Open http://localhost:5173. Attach `.txt` / `.md` / `.pdf` files, then ask from the prompt bar.
 
-Optional: set `VITE_API_BASE_URL` in `frontend/.env` if the API is not on the same origin / proxy (default empty so the proxy is used).
+Frontend talks to the API via `VITE_API_BASE_URL` (default `http://localhost:8000`).
 
 ### One-shot
 
@@ -109,7 +110,7 @@ python3 -m app.main notes.txt --question "What is this project about?" --json
 ## How it works
 
 1. Load local files under a character budget.
-2. Chunk text and upsert embeddings into a **Chroma Cloud** collection (`chromadb.CloudClient`).
+2. Chunk text and upsert embeddings into a **local Chroma** collection (`chromadb.PersistentClient`, embeddings via `all-MiniLM-L6-v2` / ONNX).
 3. Run the **LangGraph** ask graph:
    - `judge` — score whether RAG help is needed (0–100); continue to retrieve only when score **> 60**
    - `retrieve` or `skip_retrieve` — enhance queries + multi-query Chroma retrieval, or empty context
